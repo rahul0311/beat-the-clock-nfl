@@ -21,16 +21,30 @@ def alias(name):
     parts = name.split()
     if len(parts) < 2:
         return ''
-    last = parts[-2] if parts[-1].lower().strip('.') in ('jr', 'sr', 'ii', 'iii', 'iv', 'v') else parts[-1]
+    if parts[-1].lower().strip('.') in ('jr', 'sr', 'ii', 'iii', 'iv', 'v'):
+        parts = parts[:-1]
+    last = ''.join(parts[1:])
     return re.sub(r'[^a-z]', '', (parts[0][0] + last).lower())
 
 
 def identify_target(description, route_ids, players):
-    match = re.search(r'\b(?:to|intended for)\s+([A-Za-z][A-Za-z.\x27-]*)', description)
+    # Descriptions include D.Schultz, Dj.Moore, Mi.Carter, and A.St. Brown.
+    match = re.search(r'\b(?:to|intended for)\s+([A-Za-z]+(?:\.[A-Za-z]+)*)\.((?:St\.\s+)?[A-Za-z][A-Za-z.\x27-]*)', description)
     if not match:
         return None
-    token = re.sub(r'[^a-z]', '', match.group(1).lower())
-    hits = [pid for pid in route_ids if alias(players.get(pid, {}).get('displayName', '')) == token]
+    prefix = re.sub(r'[^a-z]', '', match.group(1).lower())
+    family = re.sub(r'[^a-z]', '', match.group(2).lower())
+    hits = []
+    for pid in route_ids:
+        parts = players.get(pid, {}).get('displayName', '').split()
+        if len(parts) < 2:
+            continue
+        if parts[-1].lower().strip('.') in ('jr', 'sr', 'ii', 'iii', 'iv', 'v'):
+            parts = parts[:-1]
+        first = re.sub(r'[^a-z]', '', parts[0].lower())
+        surname = re.sub(r'[^a-z]', '', ''.join(parts[1:]).lower())
+        if first.startswith(prefix) and surname == family:
+            hits.append(pid)
     return hits[0] if len(hits) == 1 else None
 
 
@@ -131,7 +145,13 @@ def main():
             los = float(120 - absolute_los if direction == 'left' else absolute_los)
             receivers = [int(pid) for pid in scout.loc[scout.pff_role.str.lower() == 'pass route', 'nflId']
                          if players.get(int(pid), {}).get('officialPosition') in ('WR', 'TE', 'RB')]
-            target = identify_target(meta['playDescription'], receivers, players)
+            # A chip/block-assigned skill player can subsequently receive a pass.
+            # Match the named target against skill players present, not just route roles.
+            target_candidates = [int(pid) for pid in scout.nflId
+                                 if players.get(int(pid), {}).get('officialPosition') in ('WR', 'TE', 'RB')]
+            target = identify_target(meta['playDescription'], target_candidates, players)
+            if target is not None and target not in receivers:
+                receivers.append(target)
             depth = pass_depth(meta['playDescription'])
             pressure = bool(scout[['pff_hurry', 'pff_hit', 'pff_sack']].fillna(0).to_numpy().max() > 0)
             row = dict(gameId=int(game_id), playId=int(play_id), week=int(game_lookup[game_id]['week']),

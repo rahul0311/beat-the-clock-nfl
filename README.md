@@ -62,9 +62,9 @@ The checks confirm 11 offensive players, 11 defenders, and the ball in each insp
 
 ## Repository versus local prototype
 
-**This README records the latest local progress. The dashboard and latest bulk-analysis/name-matching changes have not all been pushed to GitHub yet.** The checked-in project contains the earlier exploratory baseline and first-play validation; no live public dashboard or final submission is claimed here. Generated results and raw data are excluded from Git, and the original pre-validation results are archived locally and must not be used for receiver conclusions.
+The prototype includes the dashboard source, generated `docs/index.html`, corrected analysis, and measurement tests. It is a working descriptive baseline, not the completed timing-alignment feature or final competition submission. Generated bulk results and raw data are excluded from Git; the compact dashboard embeds its own analyzed values and three replay examples. Original pre-validation results are archived locally and must not be used for receiver conclusions.
 
-The local prototype consists of `build_dashboard.py`, `dashboard.html`, and the generated `docs/index.html`; it embeds the analyzed data and Plotly runtime so it can open without external chart requests. The source analysis uses Python, pandas, and NumPy. The project is open in Kiro with project context in its steering folder.
+The dashboard consists of `build_dashboard.py`, `dashboard.html`, and the generated [docs/index.html](docs/index.html); it embeds the analyzed data and Plotly runtime so it can open without external chart requests. Download/open that HTML file, or serve `docs/` locally using the [setup instructions](SETUP.md). The source analysis uses Python, pandas, and NumPy. The project is open in Kiro with current context in its steering folder; public hosting is still pending.
 
 ## Assumptions and limitations
 

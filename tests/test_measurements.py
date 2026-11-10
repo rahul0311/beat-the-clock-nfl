@@ -15,6 +15,12 @@ class MeasurementTests(unittest.TestCase):
         roster = {1: {'displayName': 'Dalton Schultz'}, 2: {'displayName': 'David Schultz'}}
         self.assertIsNone(identify_target('pass short middle to D.Schultz.', [1, 2], roster))
 
+    def test_multiple_initials_prefixes_and_compound_surnames(self):
+        roster = {1: {'displayName': 'DJ Moore'}, 2: {'displayName': 'Michael Carter'},
+                  3: {'displayName': 'Amon-Ra St. Brown'}}
+        for token, expected in [('Dj.Moore', 1), ('Mi.Carter', 2), ('A.St. Brown', 3)]:
+            self.assertEqual(identify_target('pass short left to ' + token + ' for 5 yards.', list(roster), roster), expected)
+
     def test_pass_label_does_not_use_yards_gained(self):
         self.assertEqual(pass_depth('pass short left to C.Lamb for 22 yards, TOUCHDOWN.'), 'short')
         self.assertEqual(pass_depth('pass incomplete deep right to M.Evans.'), 'deep')

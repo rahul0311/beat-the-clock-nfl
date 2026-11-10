@@ -44,7 +44,7 @@ def inspect(data_dir, game_id, play_id):
     name_match = re.search(r'\bpass (?:incomplete )?(?:short|deep) (?:left|middle|right) to ([A-Za-z.\x27-]+)', play['playDescription'])
     if not name_match:
         raise ValueError('Play has no unambiguous named target; choose another validation example.')
-    abbreviation = name_match.group(1)
+    abbreviation = name_match.group(1).rstrip('.')
     target_matches = []
     for pid, r in role.items():
         if r != 'Pass Route':

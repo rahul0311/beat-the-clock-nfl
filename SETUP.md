@@ -34,4 +34,25 @@ The current candidate window definition is at least 2 yards from the nearest def
 5. Build the visualization around a validated finding and show sample sizes and limitations.
 6. Verify a clean run, finalize the 3–5 sentence README, and prepare the public submission URL.
 
-Current stage: the first real-play measurement check is documented in [validation/README.md](validation/README.md), with fixes for target matching and the scrimmage-line reference. More contrasting examples and question confirmation remain next. No finished dashboard or general finding has been produced. Original bulk outputs are archived under ignored `results/before-validation/` and must not be used for receiver conclusions.
+## Build and view the current dashboard
+
+To view the included self-contained prototype without downloading the dataset:
+
+```bash
+python3 -m http.server 8765 --bind 127.0.0.1 --directory docs
+```
+
+Open `http://127.0.0.1:8765/`. The included HTML embeds the analysis values, Plotly runtime, and three checked replays; no external chart requests are needed.
+
+To regenerate it from source after installing dependencies and obtaining the data:
+
+```bash
+python analyze.py --data-dir data --out-dir results/corrected
+python inspect_play.py --data-dir data --play-id 187 --output validation/play-187.json
+python inspect_play.py --data-dir data --play-id 1425 --output validation/play-1425.json
+python inspect_play.py --data-dir data --play-id 434 --output validation/play-434.json
+python -m unittest discover -s tests -v
+python build_dashboard.py --results results/corrected --output docs/index.html
+```
+
+Current stage: the descriptive dashboard works, three contrasting plays have been independently checked, and six measurement tests pass. The next development stage is the receiver–QB timing-alignment comparison, with explicit treatment of early release ending observation. This is not a finished alignment model or final submission. Original bulk outputs are archived under ignored `results/before-validation/` and must not be used for receiver conclusions.
