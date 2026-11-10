@@ -192,6 +192,8 @@ def main():
                                  passDepth=depth, ttt=ttt, targeted=pid == target,
                                  firstWindow=windows[0][0] if windows else None,
                                  windowSeconds=round(total, 3), hasWindow=bool(windows),
+                                 windowsJson=json.dumps(windows, separators=(',', ':')),
+                                 continuousTracking=bool(np.all(np.diff(times) == 1)),
                                  releaseSeparation=float(sep[-1]) if np.isfinite(sep[-1]) else None,
                                  releaseDepth=float(depth_yards[-1]) if np.isfinite(depth_yards[-1]) else None,
                                  validFrameShare=round(float(valid.mean()), 3))

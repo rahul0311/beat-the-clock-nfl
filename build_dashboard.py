@@ -5,6 +5,7 @@ from pathlib import Path
 
 import pandas as pd
 from plotly.offline import get_plotlyjs
+from alignment import add_alignment
 
 
 def build(results, data_dir, validation_dir, output):
@@ -25,6 +26,9 @@ def build(results, data_dir, validation_dir, output):
                    namedTargets=int(short.targetId.notna().sum()),
                    roleClocks=json.loads(short.groupby(['position', 'playAction']).ttt.agg(['count', 'mean', 'median']).reset_index().to_json(orient='records')),
                    playActionClocks=json.loads(short.groupby('playAction').ttt.agg(['count', 'mean', 'median']).reset_index().to_json(orient='records')))
+    alignment, alignment_audit = add_alignment(plays, routes, min_window=report['settings']['minimumWindowSeconds'])
+    alignment.to_csv(results / 'alignment.csv', index=False)
+    (results / 'alignment-audit.json').write_text(json.dumps(alignment_audit, indent=2))
     examples = [json.loads((validation_dir / ('play-' + str(pid) + '.json')).read_text()) for pid in [187, 1425, 434]]
     for ex in examples:
         row = joined.loc[joined.gameId.eq(int(ex['gameId'])) & joined.playId.eq(int(ex['playId']))].iloc[0]
@@ -33,7 +37,12 @@ def build(results, data_dir, validation_dir, output):
     columns = ['gameId', 'playId', 'qb', 'team', 'week', 'ttt', 'depth', 'coverage', 'coverageType', 'formation',
                'playAction', 'pressure', 'position', 'down', 'result', 'target', 'releaseSeparation',
                'releaseDepth', 'firstWindow', 'windowSeconds']
+    alignment_columns = ['qb', 'team', 'receiver', 'position', 'coverageType', 'targeted', 'clock',
+                         'referenceCount', 'referenceLevel', 'ttt', 'alignmentStatus']
     payload = dict(columns=columns, rows=json.loads(joined[columns].to_json(orient='values', double_precision=4)),
+                   alignmentColumns=alignment_columns,
+                   alignment=json.loads(alignment[alignment_columns].to_json(orient='values', double_precision=4)),
+                   alignmentAudit=alignment_audit,
                    summary=summary, audit=report['audit'], examples=examples, settings=report['settings'])
     template = Path(__file__).with_name('dashboard.html').read_text()
     packed = json.dumps(payload, separators=(',', ':'), allow_nan=False).replace('</', '<\\/')
