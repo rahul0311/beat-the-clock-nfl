@@ -35,7 +35,10 @@ def build_matchup(alignment, sensitivity_dirs=None, min_window=.3):
         sample, _ = add_alignment(pd.read_csv(directory / 'plays_analyzed.csv'),
                                   pd.read_csv(directory / 'receiver_windows.csv'),
                                   min_window=settings['minimumWindowSeconds'])
-        sensitivity[label] = {pos: resolved_rate(sample[sample.position == pos]) for pos in POSITIONS}
+        wr = sample[sample.position == 'WR']
+        sensitivity[label] = dict(weeks=sorted(int(w) for w in pd.read_csv(directory / 'plays_analyzed.csv').week.unique()),
+                                  games=int(sample.gameId.nunique()),
+                                  **{coverage: resolved_rate(wr[wr.coverageType == coverage]) for coverage in ['Man', 'Zone']})
     return dict(matchup=matchup, overall=overall, sensitivity=sensitivity)
 
 
@@ -63,11 +66,17 @@ def build(results, data_dir, validation_dir, output, sensitivity_dirs=None):
     coverage_matchup = build_matchup(alignment, sensitivity_dirs=sensitivity_dirs,
                                      min_window=report['settings']['minimumWindowSeconds'])
     (results / 'coverage_matchup.json').write_text(json.dumps(coverage_matchup, indent=2))
-    examples = [json.loads((validation_dir / ('play-' + str(pid) + '.json')).read_text()) for pid in [187, 1425, 434]]
+    examples = [json.loads((validation_dir / ('play-' + str(pid) + '.json')).read_text()) for pid in [187, 1425, 434, 2871]]
     for ex in examples:
         row = joined.loc[joined.gameId.eq(int(ex['gameId'])) & joined.playId.eq(int(ex['playId']))].iloc[0]
         assert row.target == ex['target'] and row.ttt == ex['timeToThrow']
         assert abs(row.releaseSeparation - ex['frames'][-1]['separation']) < 1e-5
+        # Attach the target's QB reference clock and measured windows so replays show the metric itself.
+        match = alignment.loc[alignment.gameId.eq(int(ex['gameId'])) & alignment.playId.eq(int(ex['playId'])) & alignment.targeted]
+        assert len(match) == 1
+        ex['referenceClock'] = float(match.clock.iloc[0]) if pd.notna(match.clock.iloc[0]) else None
+        ex['windows'] = json.loads(match.windowsJson.iloc[0])
+        ex['alignmentStatus'] = match.alignmentStatus.iloc[0]
     columns = ['gameId', 'playId', 'qb', 'team', 'week', 'ttt', 'depth', 'coverage', 'coverageType', 'formation',
                'playAction', 'pressure', 'position', 'down', 'result', 'target', 'releaseSeparation',
                'releaseDepth', 'firstWindow', 'windowSeconds']
