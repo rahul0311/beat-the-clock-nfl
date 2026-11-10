@@ -1,0 +1,12 @@
+data
+results/
+work/
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+.DS_Store
+.env
+.env.*
+*.part
+*.log
