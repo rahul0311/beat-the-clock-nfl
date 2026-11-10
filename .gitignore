@@ -10,3 +10,4 @@ __pycache__/
 .env.*
 *.part
 *.log
+validation/*.json

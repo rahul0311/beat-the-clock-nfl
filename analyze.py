@@ -22,7 +22,7 @@ def alias(name):
     if len(parts) < 2:
         return ''
     last = parts[-2] if parts[-1].lower().strip('.') in ('jr', 'sr', 'ii', 'iii', 'iv', 'v') else parts[-1]
-    return re.sub(r'[^a-z]', '', parts[0][0] + last.lower()).lower()
+    return re.sub(r'[^a-z]', '', (parts[0][0] + last).lower())
 
 
 def identify_target(description, route_ids, players):
@@ -121,11 +121,14 @@ def main():
             left = cut.playDirection.eq('left')
             cut.loc[left, 'x'] = 120 - cut.loc[left, 'x']
             cut.loc[left, 'y'] = 53.3 - cut.loc[left, 'y']
-            ball_at_snap = cut.loc[(cut.frameId == snap) & cut.team.eq('football')]
-            if len(ball_at_snap) != 1:
-                audit['missing_snap_ball'] += 1
+            # The ball can already have moved toward the QB at the tagged snap.
+            # Use the play metadata's scrimmage line instead of the ball position.
+            absolute_los = meta.get('absoluteYardlineNumber')
+            if pd.isna(absolute_los):
+                audit['missing_scrimmage_line'] += 1
                 continue
-            los = float(ball_at_snap.x.iloc[0])
+            direction = raw.playDirection.iloc[0]
+            los = float(120 - absolute_los if direction == 'left' else absolute_los)
             receivers = [int(pid) for pid in scout.loc[scout.pff_role.str.lower() == 'pass route', 'nflId']
                          if players.get(int(pid), {}).get('officialPosition') in ('WR', 'TE', 'RB')]
             target = identify_target(meta['playDescription'], receivers, players)

@@ -34,4 +34,4 @@ The current candidate window definition is at least 2 yards from the nearest def
 5. Build the visualization around a validated finding and show sample sizes and limitations.
 6. Verify a clean run, finalize the 3–5 sentence README, and prepare the public submission URL.
 
-Current stage: initial exploration exists; manual measurement validation and question confirmation are next. No finished dashboard or final finding has been produced.
+Current stage: the first real-play measurement check is documented in [validation/README.md](validation/README.md), with fixes for target matching and the scrimmage-line reference. More contrasting examples and question confirmation remain next. No finished dashboard or general finding has been produced. Original bulk outputs are archived under ignored `results/before-validation/` and must not be used for receiver conclusions.
