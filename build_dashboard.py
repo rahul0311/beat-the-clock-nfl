@@ -8,7 +8,38 @@ from plotly.offline import get_plotlyjs
 from alignment import add_alignment
 
 
-def build(results, data_dir, validation_dir, output):
+POSITIONS = ['WR', 'TE', 'RB']
+
+
+def resolved_rate(df):
+    """Open-rate among plays the tracking resolves: window / (window + no-window)."""
+    counts = df.alignmentStatus.value_counts()
+    observed = int(counts.get('window_observed', 0))
+    none = int(counts.get('no_window_observed', 0))
+    total = observed + none
+    return dict(open=observed, resolved=total, rate=(round(100 * observed / total, 1) if total else None))
+
+
+def build_matchup(alignment, sensitivity_dirs=None, min_window=.3):
+    """Coverage x position resolved open-rates, plus optional threshold sensitivity."""
+    matchup = {coverage: {pos: resolved_rate(alignment[(alignment.position == pos) & (alignment.coverageType == coverage)])
+                          for pos in POSITIONS}
+               for coverage in ['Man', 'Zone']}
+    overall = {pos: resolved_rate(alignment[alignment.position == pos]) for pos in POSITIONS}
+    sensitivity = {}
+    for label, directory in (sensitivity_dirs or {}).items():
+        directory = Path(directory)
+        if not (directory / 'plays_analyzed.csv').exists():
+            continue
+        settings = json.loads((directory / 'report.json').read_text())['settings']
+        sample, _ = add_alignment(pd.read_csv(directory / 'plays_analyzed.csv'),
+                                  pd.read_csv(directory / 'receiver_windows.csv'),
+                                  min_window=settings['minimumWindowSeconds'])
+        sensitivity[label] = {pos: resolved_rate(sample[sample.position == pos]) for pos in POSITIONS}
+    return dict(matchup=matchup, overall=overall, sensitivity=sensitivity)
+
+
+def build(results, data_dir, validation_dir, output, sensitivity_dirs=None):
     report = json.loads((results / 'report.json').read_text())
     plays = pd.read_csv(results / 'plays_analyzed.csv')
     routes = pd.read_csv(results / 'receiver_windows.csv')
@@ -29,6 +60,9 @@ def build(results, data_dir, validation_dir, output):
     alignment, alignment_audit = add_alignment(plays, routes, min_window=report['settings']['minimumWindowSeconds'])
     alignment.to_csv(results / 'alignment.csv', index=False)
     (results / 'alignment-audit.json').write_text(json.dumps(alignment_audit, indent=2))
+    coverage_matchup = build_matchup(alignment, sensitivity_dirs=sensitivity_dirs,
+                                     min_window=report['settings']['minimumWindowSeconds'])
+    (results / 'coverage_matchup.json').write_text(json.dumps(coverage_matchup, indent=2))
     examples = [json.loads((validation_dir / ('play-' + str(pid) + '.json')).read_text()) for pid in [187, 1425, 434]]
     for ex in examples:
         row = joined.loc[joined.gameId.eq(int(ex['gameId'])) & joined.playId.eq(int(ex['playId']))].iloc[0]
@@ -42,7 +76,7 @@ def build(results, data_dir, validation_dir, output):
     payload = dict(columns=columns, rows=json.loads(joined[columns].to_json(orient='values', double_precision=4)),
                    alignmentColumns=alignment_columns,
                    alignment=json.loads(alignment[alignment_columns].to_json(orient='values', double_precision=4)),
-                   alignmentAudit=alignment_audit,
+                   alignmentAudit=alignment_audit, coverageMatchup=coverage_matchup,
                    summary=summary, audit=report['audit'], examples=examples, settings=report['settings'])
     template = Path(__file__).with_name('dashboard.html').read_text()
     packed = json.dumps(payload, separators=(',', ':'), allow_nan=False).replace('</', '<\\/')
@@ -63,4 +97,5 @@ if __name__ == '__main__':
     p.add_argument('--validation-dir', type=Path, default=Path('validation'))
     p.add_argument('--output', type=Path, default=Path('docs/index.html'))
     a = p.parse_args()
-    build(a.results, a.data_dir, a.validation_dir, a.output)
+    sensitivity_dirs = {'1.5 yd': 'results/sens_15', '2.0 yd': 'results/sens_20', '2.5 yd': 'results/sens_25'}
+    build(a.results, a.data_dir, a.validation_dir, a.output, sensitivity_dirs=sensitivity_dirs)

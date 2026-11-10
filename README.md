@@ -1,30 +1,38 @@
 # Beat the Clock
 
-Beat the Clock is a Python project for the NFL Big Data Bowl — NYU Edition, exploring how quarterback throwing time relates to receiving opportunities for wide receivers (WR), tight ends (TE), and running backs (RB).
-The current tool compares sustained receiver separation windows with a quarterback's typical short-pass release time estimated from other games, and includes throwing-time distributions and three actual tracking replays.
-It uses the event's public 2021 Weeks 1–8 tracking and PFF data, measuring snap-to-release time from tagged events and identifying short passes from play-description labels rather than total yards gained.
-Initial descriptive results show a median release time of 2.5 seconds without play action versus 3.1 seconds with play action, illustrating why one average throwing clock can hide different receiving situations.
-The receiver-timing view distinguishes observed windows from fully observed no-window cases and unresolved observations; its provisional geometric definitions do not establish receiver quality, a safe throw, catch probability, or a causal finding.
+Beat the Clock is a Python tool for the NFL Big Data Bowl — NYU Edition that measures whether wide receivers (WR), tight ends (TE), and running backs (RB) get open *within the time their quarterback actually takes to throw*, using public 2021 Weeks 1–8 tracking and PFF data. For every short pass it builds the QB's typical release time from his **other** games, then checks whether each route runner reached a sustained 2-yard window in the short zone before that clock — turning raw tracking into a coverage-by-position openness map a coach can act on.
+**The headline finding:** short-game separation is driven far more by coverage than by position. Against zone coverage, WRs reach an open window **92.8%** of resolved plays and TEs **86.9%**; against man coverage both fall sharply (WR **67.9%**, TE **69.3%**), while RBs rarely create a downfield short window in either look (**26.9–31.7%**) because their outlets sit at or behind the line. The WR > TE > RB ordering holds at 1.5, 2.0, and 2.5-yard definitions of "open," so it is not an artifact of one threshold.
+A coach or analyst uses this to set quick-game expectations by coverage: against man, lean on scheme (motion, picks, play action) rather than expecting receivers to win one-on-one; against zone, the quick game opens up for both WRs and TEs. The tool ships as a self-contained dashboard with the headline chart, a throwing-time baseline, and three independently checked tracking replays.
+These are descriptive associations on geometric space before the throw. Separation is **not** catch probability, coverage responsibility, or a ranking of receiver talent — a receiver can be wide open and the pass still fall incomplete (shown in the Brady → Evans replay).
 
 ## The football question
 
-**Do receivers create sustained separation within the time their quarterback typically takes to throw in comparable situations?**
+**Do receivers create sustained separation within the time their quarterback typically takes to throw — and does that depend more on position or on coverage?**
 
-The intended audience is a coach or analyst reviewing how receiver movement fits the offense's throwing rhythm. The current version adds a descriptive alignment measurement to the throwing-time baseline and actual-play replays; it does not recommend whom the QB should have targeted or infer what an unobserved route would have done.
+The intended audience is a coach or analyst reviewing how receiver movement fits the offense's throwing rhythm against a given coverage. The tool reports a coverage-by-position openness map, a throwing-time baseline, and actual-play replays; it does not recommend whom the QB should have targeted or infer what an unobserved route would have done.
 
-## Work completed so far
+## The headline: coverage decides who gets open
 
-- Downloaded all **122 per-game tracking files** and the four metadata files: games, players, plays, and PFF scouting data.
-- Built and rerun a Python pipeline that joins player roles and play context, normalizes playing direction, measures tagged snap-to-release time, and calculates nearest-defender separation.
-- Added explicit exclusion counts for non-attempts, penalties, missing or ambiguous events, and missing scrimmage-line metadata.
-- Corrected target-name matching, including formats such as `Dj.Moore`, `Mi.Carter`, and compound surnames; ambiguous or unmatched targets remain missing.
-- Corrected the scrimmage-line reference: the ball may already have moved toward the QB at the tagged snap, so the pipeline now uses play metadata.
-- Independently checked three real plays against raw CSV rows, covering completed, incomplete, quick, and delayed short throws, and both playing directions.
-- Passed **12 tests** covering measurement correctness, target matching, windows ending at observation, early-release censoring, insufficient reference samples, and exclusion of the evaluated game from the QB reference.
-- Built a self-contained dashboard with release-time charts, target-role comparisons, receiver/QB tables, three animated replays, and methods/exclusion notes.
-- Browser-checked the filters and all three replays; checked one filtered result against Python calculations.
-- Added the receiver-window view for **25,082 receiver–play observations**, including untargeted route runners, with explicit unknown cases and minimum/maximum ranges rather than a player-quality leaderboard.
-- Created this public repository and opened the local project in Kiro with project context in `.kiro/steering/`.
+For each short pass, we estimate the QB's typical release time from his **other** games (the "clock"), then check whether each WR/TE/RB route runner reached a sustained 2-yard window in the 0–10 yard zone before that clock. The **resolved open-rate** below counts only plays the tracking runs long enough to judge (window observed vs. fully observed with no window); unresolved and no-reference cases are excluded from the rate and reported separately.
+
+| Coverage | WR | TE | RB |
+|---|---:|---:|---:|
+| **Zone** | 92.8% (n=8,744) | 86.9% (n=3,421) | 31.7% (n=1,964) |
+| **Man** | 67.9% (n=2,955) | 69.3% (n=1,132) | 26.9% (n=629) |
+
+(n = resolved receiver–play observations, full 122-game season.) Against zone, receivers win space often; against man, both WRs and TEs drop roughly 20–25 points. RBs rarely create a downfield short window in either coverage because their outlets sit at or behind the line, outside this regional window by design.
+
+### Sensitivity: does it survive a different definition of "open"?
+
+The 2-yard cutoff is a modeling choice, so we re-ran the window at 1.5, 2.0, and 2.5 yards on a stated 40-game sample (8,245 short receiver–plays). The WR > TE > RB ordering holds at every threshold, so the ranking is robust, not an artifact of one cutoff.
+
+| Position | 1.5 yd | 2.0 yd | 2.5 yd |
+|---|---:|---:|---:|
+| WR | 91.4% | 86.0% | 82.1% |
+| TE | 84.1% | 79.7% | 73.9% |
+| RB | 28.0% | 26.9% | 26.0% |
+
+The zone-beats-man gap for both WR and TE also persists at every threshold. One fragile pattern did **not** survive and is deliberately not claimed: whether TE edges WR against man flips with the threshold (TE only leads at exactly 2.0 yd), so we report the coverage effect, not a within-man position winner.
 
 ## Current descriptive results
 
@@ -40,6 +48,20 @@ The corrected local run retains **6,889 pass attempts**, including **5,436 short
 | Short-pass targets matched to a unique WR/TE/RB | 5,204 / 5,436 (95.7%) |
 
 Play action means a fake handoff before the pass. Its timing difference is descriptive: formation, route assignment, coverage, quarterback, and game situation also vary between groups. The three-second cutoff summarizes the distribution; it is not an established definition of a quick pass or a checkdown.
+
+## Work completed so far
+
+- Downloaded all **122 per-game tracking files** and the four metadata files: games, players, plays, and PFF scouting data.
+- Built and rerun a Python pipeline that joins player roles and play context, normalizes playing direction, measures tagged snap-to-release time, and calculates nearest-defender separation.
+- Added explicit exclusion counts for non-attempts, penalties, missing or ambiguous events, and missing scrimmage-line metadata.
+- Corrected target-name matching, including formats such as `Dj.Moore`, `Mi.Carter`, and compound surnames; ambiguous or unmatched targets remain missing.
+- Corrected the scrimmage-line reference: the ball may already have moved toward the QB at the tagged snap, so the pipeline now uses play metadata.
+- Independently checked three real plays against raw CSV rows, covering completed, incomplete, quick, and delayed short throws, and both playing directions.
+- Passed **12 tests** covering measurement correctness, target matching, windows ending at observation, early-release censoring, insufficient reference samples, and exclusion of the evaluated game from the QB reference.
+- Added the receiver-window view for **25,082 receiver–play observations**, including untargeted route runners, with explicit unknown cases and minimum/maximum ranges rather than a player-quality leaderboard.
+- Added the **coverage-by-position openness map** (headline chart) and a **1.5 / 2.0 / 2.5-yard threshold sensitivity check** confirming the WR > TE > RB ordering is stable.
+- Built a self-contained dashboard with the headline matchup chart, release-time charts, target-role comparisons, receiver/QB tables, three animated replays, and methods/exclusion notes.
+- Created this public repository and opened the local project in Kiro with project context in `.kiro/steering/`.
 
 ## Real plays checked
 
@@ -70,21 +92,20 @@ For example, Dallas WRs have 297 observed windows, 47 fully observed no-window c
 
 ## What is still unfinished
 
-- Assess sensitivity of the provisional distance, duration, and depth thresholds before making stronger football claims.
 - Account more fully for route responsibility and differences in observed receiving situations; the current method exposes early-release censoring rather than guessing missing routes.
-- Check whether patterns hold within quarterback, coverage, receiving role, and other context rather than relying on pooled averages.
-- Select a defensible original insight and refine the dashboard around it.
+- Extend the threshold sensitivity check (currently 40 games) and the coverage breakdown to the full season and to duration/depth parameters.
 - Finish the public hosted output and final competition submission.
 
 ## Repository versus local prototype
 
-The prototype includes the dashboard source, generated `docs/index.html`, corrected analysis, receiver-window comparison, and tests. It is a working descriptive tool with provisional measurement choices, not the final competition submission. Generated bulk results and raw data are excluded from Git; the dashboard embeds its own analyzed values and three replay examples. Original pre-validation results are archived locally and must not be used for receiver conclusions.
+The prototype includes the dashboard source, generated `docs/index.html`, corrected analysis, receiver-window comparison, coverage matchup, and tests. It is a working descriptive tool with provisional measurement choices. Generated bulk results and raw data are excluded from Git; the dashboard embeds its own analyzed values and three replay examples. Original pre-validation results are archived locally and must not be used for receiver conclusions.
 
-The dashboard consists of `build_dashboard.py`, `dashboard.html`, and the generated [docs/index.html](docs/index.html); it embeds the analyzed data and Plotly runtime so it can open without external chart requests. Download/open that HTML file, or serve `docs/` locally using the [setup instructions](SETUP.md). The source analysis uses Python, pandas, and NumPy. The project is open in Kiro with current context in its steering folder; public hosting is still pending.
+The dashboard consists of `build_dashboard.py`, `dashboard.html`, and the generated [docs/index.html](docs/index.html); it embeds the analyzed data and Plotly runtime so it can open without external chart requests. Download/open that HTML file, or serve `docs/` locally using the [setup instructions](SETUP.md). The source analysis uses Python, pandas, and NumPy. Public hosting is pending.
 
 ## Assumptions and limitations
 
 - “Short pass” is a description label, not a route classification or a precise air-yard measurement.
+- The resolved open-rate excludes unresolved and no-reference plays; it is a rate among judgeable plays, not a share of all route runners. Coverage-family labels (man/zone) come from PFF.
 - Time to throw is `(pass_forward frame − ball_snap frame) / 10`, using tagged events at the documented 10 Hz; rounded timestamp strings are not used as a finer clock.
 - The retained sample excludes penalized plays, sacks, scrambles, and other non-attempts, as well as unusable event/line metadata; it is not every offensive play.
 - Target-specific views exclude unmatched targets and positions outside WR/TE/RB. Matching is text-based and remains a limitation despite checks.
@@ -92,4 +113,4 @@ The dashboard consists of `build_dashboard.py`, `dashboard.html`, and the genera
 - We cannot infer the quarterback's intended reads, prove a missed throw, identify a checkdown from timing alone, or claim that play action causes the observed delay.
 - The data is historical, from 2021 Weeks 1–8; results are not current player ratings.
 
-[Setup instructions](SETUP.md) · [First-play validation notes](validation/README.md) · [Event dataset and documentation](https://github.com/ThompsonJamesBliss/nfl-big-data-bowl-regional-event-data)
+[Setup instructions](SETUP.md) · [Measurement definition](ALIGNMENT.md) · [First-play validation notes](validation/README.md) · [Event dataset and documentation](https://github.com/ThompsonJamesBliss/nfl-big-data-bowl-regional-event-data)

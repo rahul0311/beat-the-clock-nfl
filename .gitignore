@@ -12,3 +12,6 @@ __pycache__/
 *.log
 validation/*.json
 /_probe.py
+_*.py
+_*.txt
+_*.json
